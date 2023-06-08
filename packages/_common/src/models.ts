@@ -47,6 +47,11 @@ export class Silero {
   }
 
   process = async (audioFrame: Float32Array): Promise<SpeechProbabilities> => {
+    // Silero has a bug where it infers silence as speech
+    // this is a workaround
+    const nonZero = audioFrame.filter((x) => x !== 0).length
+    if (nonZero === 0) return { notSpeech: 1, isSpeech: 0 }
+
     const t = new this.ort.Tensor("float32", audioFrame, [1, audioFrame.length])
     const inputs = {
       input: t,

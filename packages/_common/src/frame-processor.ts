@@ -42,6 +42,11 @@ export interface FrameProcessorOptions {
    * it will be discarded and `onVADMisfire` will be run instead of `onSpeechEnd`.
    */
   minSpeechFrames: number
+
+  /**
+   * Maximum number of frames to process before stopping the VAD.
+   */
+  maxSpeechFrames?: number
 }
 
 export const defaultFrameProcessorOptions: FrameProcessorOptions = {
@@ -51,6 +56,7 @@ export const defaultFrameProcessorOptions: FrameProcessorOptions = {
   redemptionFrames: 8,
   frameSamples: 1536,
   minSpeechFrames: 3,
+  maxSpeechFrames: undefined,
 }
 
 export function validateOptions(options: FrameProcessorOptions) {
@@ -182,6 +188,26 @@ export class FrameProcessor implements FrameProcessorInterface {
     ) {
       this.speaking = true
       return { probs, msg: Message.SpeechStart }
+    }
+
+    if (
+      probs.isSpeech >= this.options.positiveSpeechThreshold &&
+      this.speaking
+    ) {
+      const speechFrameCount = this.audioBuffer.reduce((acc, item) => {
+        return acc + +item.isSpeech
+      }, 0)
+      const maxSpeechFrames = this.options.maxSpeechFrames
+      log.debug({ speechFrameCount, maxSpeechFrames })
+      if (maxSpeechFrames && speechFrameCount >= maxSpeechFrames) {
+        const audioBuffer = this.audioBuffer
+        // leave the preSpeechPadFrames at the beginning of the audioBuffer
+        this.audioBuffer = audioBuffer.slice(
+          audioBuffer.length - this.options.preSpeechPadFrames
+        )
+        const audio = concatArrays(audioBuffer.map((item) => item.frame))
+        return { probs, msg: Message.SpeechSegment, audio }
+      }
     }
 
     if (

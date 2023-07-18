@@ -71,12 +71,15 @@ export function useMicVAD(options: Partial<ReactRealTimeVADOptions>) {
     updateUserSpeaking(probs.isSpeech)
     userOnFrameProcessed
   })
-  const { onSpeechEnd, onSpeechStart, onVADMisfire } = vadOptions
+  const { onSpeechEnd, onSpeechStart, onVADMisfire, onSpeechSegment } =
+    vadOptions
   const _onSpeechEnd = useEventCallback(onSpeechEnd)
   const _onSpeechStart = useEventCallback(onSpeechStart)
+  const _onSpeechSegment = useEventCallback(onSpeechSegment)
   const _onVADMisfire = useEventCallback(onVADMisfire)
   vadOptions.onSpeechEnd = _onSpeechEnd
   vadOptions.onSpeechStart = _onSpeechStart
+  vadOptions.onSpeechSegment = _onSpeechSegment
   vadOptions.onVADMisfire = _onVADMisfire
 
   useEffect(() => {

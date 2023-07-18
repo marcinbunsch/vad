@@ -12,7 +12,10 @@ const root = createRoot(container)
 root.render(<App />)
 
 function App() {
-  const vad = useMicVAD({})
+  const vad = useMicVAD({
+    maxSpeechFrames: 10,
+    preSpeechPadFrames: 3
+  })
   return (
     <div>
       <h6>Listening</h6>

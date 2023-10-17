@@ -6,6 +6,7 @@ were taken (or took inspiration) from https://github.com/snakers4/silero-vad
 import { SpeechProbabilities } from "./models"
 import { Message } from "./messages"
 import { log } from "./logging"
+import { Frame } from "./frame-splitter"
 
 const RECOMMENDED_FRAME_SAMPLES = [512, 1024, 1536]
 
@@ -87,7 +88,7 @@ export function validateOptions(options: FrameProcessorOptions) {
 
 export interface FrameProcessorInterface {
   resume: () => void
-  process: (arr: Float32Array) => Promise<{
+  process: (arr: Frame) => Promise<{
     probs?: SpeechProbabilities
     msg?: Message
     audio?: Float32Array
@@ -118,9 +119,7 @@ export class FrameProcessor implements FrameProcessorInterface {
   active = false
 
   constructor(
-    public modelProcessFunc: (
-      frame: Float32Array
-    ) => Promise<SpeechProbabilities>,
+    public modelProcessFunc: (frame: Frame) => Promise<SpeechProbabilities>,
     public modelResetFunc: () => any,
     public options: FrameProcessorOptions
   ) {
@@ -165,13 +164,13 @@ export class FrameProcessor implements FrameProcessorInterface {
     return {}
   }
 
-  process = async (frame: Float32Array) => {
+  process = async (frame: Frame) => {
     if (!this.active) {
       return {}
     }
     const probs = await this.modelProcessFunc(frame)
     this.audioBuffer.push({
-      frame,
+      frame: frame.samples,
       isSpeech: probs.isSpeech >= this.options.positiveSpeechThreshold,
     })
 

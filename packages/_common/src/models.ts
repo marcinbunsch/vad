@@ -1,4 +1,5 @@
 // @ts-ignore
+import { Frame } from "./frame-splitter"
 import { log } from "./logging"
 
 export type ONNXRuntimeAPI = any
@@ -15,10 +16,12 @@ export interface Model {
 }
 
 export class Silero {
-  _session
-  _h
-  _c
-  _sr
+  _session:
+    | { run: (arg0: { input: any; h: any; c: any; sr: any }) => any }
+    | undefined
+  _h: any
+  _c: any
+  _sr: any
 
   constructor(
     private ort: ONNXRuntimeAPI,
@@ -32,12 +35,11 @@ export class Silero {
   }
 
   init = async () => {
-    log.debug("initializing vad")
     const modelArrayBuffer = await this.modelFetcher()
     this._session = await this.ort.InferenceSession.create(modelArrayBuffer)
+    // @ts-ignore
     this._sr = new this.ort.Tensor("int64", [16000n])
     this.reset_state()
-    log.debug("vad is initialized")
   }
 
   reset_state = () => {
@@ -46,11 +48,12 @@ export class Silero {
     this._c = new this.ort.Tensor("float32", zeroes, [2, 1, 64])
   }
 
-  process = async (audioFrame: Float32Array): Promise<SpeechProbabilities> => {
-    // Silero has a bug where it infers silence as speech
-    // this is a workaround
-    const nonZero = audioFrame.filter((x) => x !== 0).length
-    if (nonZero === 0) return { notSpeech: 1, isSpeech: 0 }
+  process = async (audioFrameFull: Frame): Promise<SpeechProbabilities> => {
+    if (!this._session) throw new Error("Silero model not initialized")
+    // Silero has a bug where it infers absolute silence as speech - this is a workaround
+    if (audioFrameFull.isEmpty) return { notSpeech: 1, isSpeech: 0 }
+
+    const audioFrame = audioFrameFull.samples
 
     const t = new this.ort.Tensor("float32", audioFrame, [1, audioFrame.length])
     const inputs = {

@@ -177,7 +177,8 @@ export class AudioNodeVAD {
     node.connect(this.entryNode)
   }
 
-  processFrame = async (frame: Float32Array) => {
+  processFrame = async (samples: Float32Array) => {
+    const frame = { samples, isEmpty: !samples.some((s) => s === 0) }
     const { probs, msg, audio } = await this.frameProcessor.process(frame)
     if (probs !== undefined) {
       this.options.onFrameProcessed(probs)
